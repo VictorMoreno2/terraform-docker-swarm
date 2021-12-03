@@ -33,7 +33,7 @@ para testar playbook pelo wsl
 adicionar no arquivo **/etc/ansible/hosts** exemplo:
 ```
 3.216.127.136 ansible_ssh_private_key_file=~/key.pem ansible_user=ubuntu ansible_become=yes```
-
+```
 ###################### Destroy & create ######################
 para efetuar a troca de ec2 tbm precisa realizar a troca da playbook para acionar a playbook
 ```
