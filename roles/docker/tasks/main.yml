@@ -1,0 +1,38 @@
+---
+- name: Update apt-get repo and cache
+  apt: 
+    update_cache: yes
+    pkg:
+    - ca-certificates
+    - curl
+    - gnupg
+    - lsb-release
+  
+
+- name: Add an Apt signing key to a specific keyring file
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    keyring: /usr/share/keyrings/docker-archive-keyring.gpg
+
+- name: Add repo 
+  shell: echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+- name: Update update repo and install docker
+  apt: 
+    update_cache: yes
+    pkg:
+    - docker-ce
+    - docker-ce-cli
+    - containerd.io 
+
+- name: permission for user ubuntu
+  shell: "usermod -aG docker ubuntu"
+
+- name: install docker-compose
+  shell: curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+
+- name: chmod docker-compose
+  shell: chmod +x /usr/local/bin/docker-compose  
+
+- name: add docker plugin local-persist
+  shell: curl -fsSL https://raw.githubusercontent.com/CWSpear/local-persist/master/scripts/install.sh | bash    

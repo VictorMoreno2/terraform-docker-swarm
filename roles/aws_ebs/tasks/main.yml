@@ -1,0 +1,38 @@
+---
+- name: check device {{ device }} empty
+  shell: "file -s /dev/{{ device }}"
+  register: ebs_empty
+
+- name: create filesytem for device {{ device }}
+  shell: "mkfs -t ext4 /dev/{{ device }}"
+  when: 'ebs_empty.stdout == "/dev/{{ device }}: data"'
+
+- name: check dir exist {{ data_dir }}
+  shell: ls "{{ data_dir }}"
+  register: dir_exist
+  ignore_errors: yes  
+
+- name: create {{ data_dir }}
+  shell: mkdir "{{ data_dir }}"
+  when: dir_exist is failed
+
+- name: check mount {{ device }} in {{ data_dir }}
+  shell: "df -h {{ data_dir }} | grep /dev/{{ device }} || echo umounted"
+  register: check_mount
+
+- name: whoami
+  shell: "mount /dev/{{ device }} {{ data_dir }}"
+  when: 'check_mount.stdout == "umounted"'
+
+########### ADD UID DEVICE IN FSTAB ###########   
+
+- name: get blkid 
+  shell: 'blkid | grep {{ device }} | cut -d "\"" -f2'
+  register: uid_device
+
+- name: add UID in fstab
+  lineinfile:
+    path: /etc/fstab
+    regexp: 'UUID'
+    create: yes
+    line: UUID={{ uid_device.stdout }} {{ data_dir }} ext4 defaults,nofail  0  2

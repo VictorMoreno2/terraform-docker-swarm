@@ -1,0 +1,93 @@
+version: "3.3"
+services:
+    mariadb-glpi: 
+        image: fametec/glpi:9.5.6-mariadb
+        volumes: 
+          - mariadb:/var/lib/mysql:rw
+        environment:
+          MARIADB_DATABASE: {{ mariadb_database }}
+          MARIADB_PASSWORD: {{ mariadb_password }}
+          MARIADB_USER: {{ mariadb_user }}
+          MYSQL_RANDOM_ROOT_PASSWORD: '1'
+        ports: 
+          - 3306:{{ mariadb_port }}
+        networks: 
+          - glpi-backend
+
+#
+#
+    glpi: 
+        image: fametec/glpi:9.5.6
+        volumes: 
+          - files:/var/www/html/files:rw
+          - plugins:/var/www/html/plugins:rw
+          - config:/var/www/html/config:rw
+        environment:
+          GLPI_LANG: pt_BR
+          MARIADB_DATABASE: {{ mariadb_database }}
+          MARIADB_HOST: {{ mariadb_host }}
+          MARIADB_PASSWORD: {{ mariadb_password }}
+          MARIADB_PORT: '{{ mariadb_port }}'
+          MARIADB_USER: {{ mariadb_user }}
+          PLUGINS: all
+          VERSION: 9.5.6
+        depends_on: 
+          - mariadb-glpi
+        #ports: 
+        #  - 8080:80
+        networks:
+          - traefik-public 
+          - glpi-frontend
+          - glpi-backend
+        deploy:
+          labels:
+            traefik.http.routers.glpi-prd-https.rule: Host(`{{ url_domain }}`)
+            traefik.http.routers.glpi-prd-http.entrypoints: http
+            traefik.http.routers.glpi-prd-http.rule: Host(`{{ url_domain }}`)
+            swarmpit.service.deployment.autoredeploy: 'true'
+            traefik.http.routers.glpi-prd-https.tls.certresolver: le
+            traefik.http.routers.glpi-prd-http.middlewares: https-redirect
+            traefik.http.routers.glpi-prd-https.tls: 'true'
+            traefik.constraint-label: traefik-public
+            traefik.http.routers.glpi-prd-https.entrypoints: https
+            traefik.http.services.glpi-prd.loadbalancer.server.port: '80'
+            traefik.docker.network: traefik-public
+            traefik.enable: 'true'
+          update_config:
+            delay: 50s
+            failure_action: rollback  
+                    
+# CRON
+    crond: 
+        image: fametec/glpi:9.5.6-crond
+        depends_on:
+          - mariadb-glpi
+        environment:
+          MARIADB_DATABASE: {{ mariadb_database }}
+          MARIADB_HOST: {{ mariadb_host }}
+          MARIADB_PASSWORD: {{ mariadb_password }}
+          MARIADB_PORT: '{{ mariadb_port }}'
+          MARIADB_USER: {{ mariadb_user }}
+        volumes: 
+          - files:/var/www/html/files:rw
+          - plugins:/var/www/html/plugins:rw
+          - config:/var/www/html/config:rw
+        networks: 
+          - glpi-backend
+
+# VOLUMES
+volumes: 
+  files:    
+  plugins:   
+  config:
+  mariadb:
+      driver: local-persist
+      driver_opts:
+        mountpoint: {{ volume_mountpoint }}     
+
+# NETWORKS
+networks: 
+    glpi-frontend:
+    glpi-backend:
+    traefik-public:
+      external: true

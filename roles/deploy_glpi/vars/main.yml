@@ -1,0 +1,15 @@
+#### DOCKER PATH ####
+deploy_path: ~/glpi
+
+##### CONTAINER #####
+volume_mountpoint: /data/volumes/glpi/_data
+url_domain: seu.dominio.com
+
+##### DATABASE #####
+mariadb_database: glpi
+mariadb_user: glpi_user 
+mariadb_password: ubdaudnajsbdhyuasbd122dasdasd
+mysql_random_root_password: 1
+mariadb_host: mariadb-glpi
+mariadb_port: 3306
+

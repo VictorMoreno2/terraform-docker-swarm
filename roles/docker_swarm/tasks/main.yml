@@ -1,0 +1,90 @@
+---
+- name: wait for goddady domain dns replication
+  wait_for:
+    timeout: 180
+
+- name: docker swarm init
+  shell: "docker swarm init"
+  ignore_errors: yes
+
+- name: docker network create
+  shell: "docker network create --driver=overlay traefik-public"
+  ignore_errors: yes
+
+- name: docker export node ID
+  shell: "docker node ls | awk '{print $1}' | grep -v '^ID$'"
+  register: docker_worker_token
+
+- name: worker token ID output
+  debug:
+    msg: "{{ docker_worker_token.stdout }}"
+
+- name: docker export node ID
+  shell: "docker node update --label-add traefik-public.traefik-public-certificates=true {{ docker_worker_token.stdout }}"
+
+- name: Add envs to /etc/environment
+  lineinfile:
+    path: /etc/environment
+    create: yes
+    line: "{{ item }}"
+  loop:
+    - "export EMAIL={{ email }}"
+    - "export USERNAME={{ username }}"
+    - "export PASSWORD={{ password }}"
+
+- name: add env domain /etc/environment
+  lineinfile:
+    path: /etc/environment
+    regexp: 'DOMAIN'
+    create: yes
+    line: "export DOMAIN={{ traefik_domain }}"
+
+
+- name: generate hash password
+  shell: openssl passwd -apr1 $PASSWORD
+  register: hashed_password
+
+- name: worker token ID output
+  debug:
+    msg: "{{ hashed_password.stdout }}"
+
+- name: add hashed pass /etc/environment
+  lineinfile:
+    path: /etc/environment
+    regexp: 'HASHED_PASSWORD'
+    create: yes
+    line: "export HASHED_PASSWORD={{ hashed_password.stdout }}"
+
+- name: traefik download
+  shell: "curl -L dockerswarm.rocks/traefik.yml -o traefik.yml"
+
+- name: traefik deploy
+  shell: "docker stack deploy -c traefik.yml traefik"
+
+##################### SWARMPIT INSTALL #######################
+
+- name: add hashed pass /etc/environment
+  lineinfile:
+    path: /etc/environment
+    regexp: 'DOMAIN'
+    create: yes
+    line: "export DOMAIN={{ swarmpit_domain }}"
+
+- name: docker export node ID
+  shell: "docker node ls | awk '{print $1}' | grep -v '^ID$'"
+  register: docker_worker_token
+
+- name: docker export node ID db-data
+  shell: "docker node update --label-add swarmpit.db-data=true {{ docker_worker_token.stdout }}"
+
+- name: docker export node ID influx-data
+  shell: "docker node update --label-add swarmpit.influx-data=true {{ docker_worker_token.stdout }}"
+
+- name: swarmpit download
+  shell: "curl -L dockerswarm.rocks/swarmpit.yml -o swarmpit.yml"
+
+- name: swarmpit deploy 
+  shell: "docker stack deploy -c swarmpit.yml swarmpit"
+
+
+### adicionar nodes automaticamente https://imasters.com.br/devsecops/cluster-de-docker-swarm-com-ansible

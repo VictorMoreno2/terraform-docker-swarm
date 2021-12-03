@@ -1,0 +1,47 @@
+---
+- name: Create path for docker 
+  file: 
+    path: "{{ deploy_path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: copy docker-compose 
+  template:
+    src: templates/docker-compose.yml
+    dest: "{{ deploy_path }}/docker-compose.yml"
+
+- name: Copy dir apache
+  copy:
+    src: templates/apache
+    dest: "{{ deploy_path }}"
+
+- name: Copy dir crond
+  copy:
+    src: templates/crond
+    dest: "{{ deploy_path }}"
+
+- name: Copy dir mariadb
+  copy:
+    src: templates/mariadb
+    dest: "{{ deploy_path }}"
+
+- name: docker stack deploy
+  shell: docker stack deploy -c ~/glpi/docker-compose.yml glpi-prd
+
+- name: git clone plugin SSO
+  git: 
+    repo: 'https://github.com/derricksmith/phpsaml.git'
+    dest: /tmp/phpsaml
+
+- name: wait container up
+  wait_for:
+    timeout: 120
+    
+- name: get glpi app container ID
+  shell: "docker ps | awk '/prd_glpi/{print $1}'"
+  register: prd_glpi_container
+
+- name: docker cp
+  shell: "docker cp /tmp/phpsaml {{ prd_glpi_container.stdout }}:/var/www/html/plugins"
